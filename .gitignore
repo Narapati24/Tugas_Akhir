@@ -1,0 +1,63 @@
+# =========================
+# Backend (Python / FastAPI)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+backend/venv/
+venv/
+env/
+.env
+
+# Database
+backend/napak_tilas.db
+*.sqlite3
+*.db
+
+# Tesseract / OCR / ML specific (if any generated files)
+# backend/tessdata/ # Ignore this only if tessdata is downloaded dynamically, otherwise keep it.
+
+# =========================
+# Frontend (Next.js / Node.js)
+# =========================
+frontend/node_modules/
+node_modules/
+
+# Next.js build output
+frontend/.next/
+.next/
+out/
+build/
+
+# Frontend environment variables
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# npm/yarn/pnpm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# OS / Editor Files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

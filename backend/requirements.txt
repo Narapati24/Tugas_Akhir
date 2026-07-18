@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+python-multipart
+pytesseract
+pillow
+google-genai
+pydantic
+pydantic-settings
+python-dotenv
