@@ -41,6 +41,41 @@ class ItineraryFormat(BaseModel):
     estimated_duration: str
     estimated_cost: str
 
+FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash-lite']
+
+def call_gemini_with_fallback(**kwargs):
+    last_err = None
+    for model_name in FALLBACK_MODELS:
+        try:
+            kwargs['model'] = model_name
+            return client.models.generate_content(**kwargs)
+        except Exception as e:
+            last_err = e
+            print(f"Model {model_name} warning: {e}. Trying fallback model...")
+            continue
+    raise last_err
+
+def ocr_with_gemini_vision(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
+    """
+    Fallback OCR using Gemini Vision if traditional Tesseract fails to detect text.
+    """
+    if not client:
+        return ""
+    try:
+        if not mime_type or mime_type == "application/octet-stream":
+            mime_type = "image/jpeg"
+        part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+        response = call_gemini_with_fallback(
+            contents=[
+                part,
+                "Ekstrak dan salin seluruh teks yang tertulis pada gambar dokumen/buku sejarah ini apa adanya secara lengkap. Jangan menambahkan komentar pembuka atau penutup."
+            ]
+        )
+        return (response.text or "").strip()
+    except Exception as e:
+        print(f"Gemini Vision OCR Error: {e}")
+        return ""
+
 def extract_historical_info(text: str) -> dict:
     """
     Agent 1: HistoricalExtractionAgent
@@ -58,8 +93,7 @@ def extract_historical_info(text: str) -> dict:
     {text}
     """
 
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
+    response = call_gemini_with_fallback(
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -110,8 +144,7 @@ def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
     - Buat 'maps_link' berupa tautan pencarian Google Maps untuk lokasi tersebut (contoh: https://www.google.com/maps/search/?api=1&query=Nama+Lokasi).
     """
 
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
+    response = call_gemini_with_fallback(
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",

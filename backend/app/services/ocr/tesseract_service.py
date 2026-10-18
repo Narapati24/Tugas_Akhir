@@ -4,6 +4,12 @@ import io
 import os
 from app.core.config import settings
 
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    pass
+
 # Configure Tesseract path for Windows
 if os.path.exists(settings.TESSERACT_CMD):
     pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD

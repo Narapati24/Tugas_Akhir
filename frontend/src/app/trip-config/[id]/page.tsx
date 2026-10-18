@@ -109,8 +109,8 @@ export default function TripConfigPage() {
             type="number" 
             placeholder="Contoh: 500000"
             className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-            value={config.budget || ''}
-            onChange={(e) => setConfig({...config, budget: e.target.value ? parseInt(e.target.value) : null})}
+            value={config.budget ?? ''}
+            onChange={(e) => setConfig({...config, budget: e.target.value ? parseInt(e.target.value) : undefined})}
           />
         </div>
 

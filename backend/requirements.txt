@@ -4,6 +4,7 @@ sqlalchemy
 python-multipart
 pytesseract
 pillow
+pillow-heif
 google-genai
 pydantic
 pydantic-settings

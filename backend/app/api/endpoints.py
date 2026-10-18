@@ -4,7 +4,7 @@ from app.db.database import get_db
 from app.models import models
 from app.schemas import schemas
 from app.services.ocr.tesseract_service import extract_text_from_image
-from app.services.agent.gemini_service import extract_historical_info, generate_itinerary
+from app.services.agent.gemini_service import extract_historical_info, generate_itinerary, ocr_with_gemini_vision
 
 router = APIRouter()
 
@@ -16,15 +16,24 @@ async def upload_and_extract(files: list[UploadFile] = File(...), db: Session = 
     
     for file in files:
         contents = await file.read()
+        # Primary OCR: Tesseract
         raw_text = extract_text_from_image(contents)
-        if raw_text:
-            all_raw_texts.append(raw_text)
-            filenames.append(file.filename)
+        
+        # Fallback OCR: Gemini Vision (if Tesseract detects nothing due to camera angle/lighting)
+        if not raw_text.strip():
+            raw_text = ocr_with_gemini_vision(contents, file.content_type or "image/jpeg")
+            
+        if raw_text.strip():
+            all_raw_texts.append(raw_text.strip())
+            filenames.append(file.filename or "halaman")
             
     combined_raw_text = "\n\n--- NEXT PAGE ---\n\n".join(all_raw_texts)
     
     if not combined_raw_text.strip():
-        raise HTTPException(status_code=400, detail="Failed to extract text from images")
+        raise HTTPException(
+            status_code=400, 
+            detail="Teks pada gambar tidak terbaca oleh OCR. Pastikan foto buku sejarah cukup jelas, terang, dan tidak buram."
+        )
         
     # 3. Gemini Extraction
     try:

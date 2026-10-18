@@ -1,0 +1,42 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            echo "🚀 Navigating to project directory..."
+            if [ -d "$HOME/Tugas_Akhir" ]; then
+              cd "$HOME/Tugas_Akhir"
+            elif [ -d "/root/Tugas_Akhir" ]; then
+              cd /root/Tugas_Akhir
+            else
+              echo "❌ Directory Tugas_Akhir not found!"
+              exit 1
+            fi
+            
+            echo "📥 Pulling latest changes from main..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "🐳 Building and starting containers with Docker Compose..."
+            docker compose up -d --build
+            
+            echo "🧹 Cleaning up unused Docker images..."
+            docker image prune -f
+            
+            echo "✅ Deployment completed successfully!"
