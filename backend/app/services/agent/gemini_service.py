@@ -41,7 +41,7 @@ class ItineraryFormat(BaseModel):
     estimated_duration: str
     estimated_cost: str
 
-FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash']
+FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash']
 
 def call_gemini_with_fallback(**kwargs):
     last_err = None
