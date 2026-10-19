@@ -47,7 +47,7 @@ class ItineraryFormat(BaseModel):
 FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-3.5-flash-lite']
 
 def call_gemini_with_fallback(**kwargs):
-    last_err = None
+    last_err: Exception = RuntimeError("Semua model Gemini gagal merespons.")
     for model_name in FALLBACK_MODELS:
         try:
             kwargs['model'] = model_name
