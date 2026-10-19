@@ -22,8 +22,15 @@ def extract_text_from_image(image_bytes: bytes) -> str:
         # Load image from bytes
         image = Image.open(io.BytesIO(image_bytes))
         
+        # Convert to grayscale for much faster and cleaner OCR
+        image = image.convert('L')
+        
+        # Limit maximum dimension to 1400px to prevent high-res CPU choking
+        max_dim = 1400
+        if max(image.size) > max_dim:
+            image.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        
         # Point to the downloaded tessdata directory (4 levels up from this file)
-        # backend/app/services/ocr/tesseract_service.py
         backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         tessdata_dir = os.path.join(backend_dir, "tessdata")
         

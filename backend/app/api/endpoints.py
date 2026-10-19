@@ -14,14 +14,20 @@ async def upload_and_extract(files: list[UploadFile] = File(...), db: Session = 
     all_raw_texts = []
     filenames = []
     
+    import time
+    start_time = time.time()
     for file in files:
         contents = await file.read()
+        f_start = time.time()
         # Primary OCR: Tesseract
         raw_text = extract_text_from_image(contents)
+        print(f"[{file.filename}] Tesseract OCR took {time.time() - f_start:.2f}s, found {len(raw_text)} chars")
         
         # Fallback OCR: Gemini Vision (if Tesseract detects nothing due to camera angle/lighting)
         if not raw_text.strip():
+            print(f"[{file.filename}] Tesseract found no text, invoking Gemini Vision OCR...")
             raw_text = ocr_with_gemini_vision(contents, file.content_type or "image/jpeg")
+            print(f"[{file.filename}] Gemini Vision OCR finished in {time.time() - f_start:.2f}s")
             
         if raw_text.strip():
             all_raw_texts.append(raw_text.strip())
@@ -37,8 +43,11 @@ async def upload_and_extract(files: list[UploadFile] = File(...), db: Session = 
         
     # 3. Gemini Extraction
     try:
+        gemini_start = time.time()
         extracted_data = extract_historical_info(combined_raw_text)
+        print(f"Gemini entity extraction took {time.time() - gemini_start:.2f}s (Total pipeline: {time.time() - start_time:.2f}s)")
     except Exception as e:
+        print(f"Extraction error after {time.time() - start_time:.2f}s: {e}")
         raise HTTPException(status_code=500, detail=str(e))
         
     # 4. Save to DB

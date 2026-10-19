@@ -5,15 +5,12 @@ import { useRouter } from 'next/navigation';
 import { extractHistoricalInfo } from '@/lib/api';
 
 async function optimizeImage(file: File): Promise<File> {
-  // If file is smaller than 1.5MB, no resizing needed
-  if (file.size < 1.5 * 1024 * 1024) return file;
-
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX_DIM = 1800;
+      const MAX_DIM = 1200;
       let { width, height } = img;
 
       if (width > MAX_DIM || height > MAX_DIM) {
@@ -24,6 +21,10 @@ async function optimizeImage(file: File): Promise<File> {
           width = Math.round((width * MAX_DIM) / height);
           height = MAX_DIM;
         }
+      } else if (file.size < 500 * 1024 && file.type === 'image/jpeg') {
+        // Already compact JPEG and below dimensions
+        resolve(file);
+        return;
       }
 
       const canvas = document.createElement('canvas');
