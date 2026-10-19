@@ -9,7 +9,10 @@ if not settings.GEMINI_API_KEY:
     # We will instantiate the client when called, but warn if no key
     print("Warning: GEMINI_API_KEY is not set in environment.")
 
-client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
+client = genai.Client(
+    api_key=settings.GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=30000)
+) if settings.GEMINI_API_KEY else None
 
 class LocationExtractionItem(BaseModel):
     name: str
@@ -41,7 +44,7 @@ class ItineraryFormat(BaseModel):
     estimated_duration: str
     estimated_cost: str
 
-FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash']
+FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-3.5-flash-lite']
 
 def call_gemini_with_fallback(**kwargs):
     last_err = None
@@ -102,15 +105,18 @@ def extract_historical_info(text: str) -> dict:
         ),
     )
     
+    if hasattr(response, 'parsed') and response.parsed:
+        return response.parsed.model_dump()
+
     import json
-    text = response.text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    if text.endswith("```"):
-        text = text[:-3]
-    if text.startswith("```"):
-        text = text[3:]
-    return json.loads(text.strip())
+    raw_text = (response.text or "{}").strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+    if raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    return json.loads(raw_text.strip())
 
 def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
     """
@@ -153,12 +159,15 @@ def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
         ),
     )
     
+    if hasattr(response, 'parsed') and response.parsed:
+        return response.parsed.model_dump()
+
     import json
-    text = response.text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    if text.endswith("```"):
-        text = text[:-3]
-    if text.startswith("```"):
-        text = text[3:]
-    return json.loads(text.strip())
+    raw_text = (response.text or "{}").strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+    if raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    return json.loads(raw_text.strip())
