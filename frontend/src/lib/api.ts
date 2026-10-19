@@ -9,12 +9,19 @@ const getApiBase = () => {
 
 const getErrorMessage = async (res: Response, fallback: string): Promise<string> => {
     try {
-        const data = await res.json();
-        if (data && data.detail) {
-            return data.detail;
+        const text = await res.text();
+        try {
+            const data = JSON.parse(text);
+            if (data && data.detail) {
+                return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+            }
+        } catch (_) {
+            if (text && text.trim().length > 0 && text.length < 250) {
+                return `${fallback} (${text.trim()})`;
+            }
         }
     } catch (_) {}
-    return fallback;
+    return `${fallback} (Status ${res.status}: ${res.statusText || 'Error'})`;
 };
 
 export const extractHistoricalInfo = async (files: File[]): Promise<HistoricalExtraction> => {

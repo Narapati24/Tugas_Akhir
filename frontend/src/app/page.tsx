@@ -78,9 +78,8 @@ export default function UploadPage() {
     };
   }, [files]);
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (files.length === 0) return;
+  const handleUpload = async () => {
+    if (files.length === 0 || loading) return;
 
     setLoading(true);
     try {
@@ -132,7 +131,7 @@ export default function UploadPage() {
       <h1 className="text-3xl font-bold mb-6 text-gray-800 tracking-tight">Mulai Napak Tilas</h1>
       <p className="text-gray-600 mb-8">Unggah beberapa gambar halaman buku sejarah Anda sekaligus untuk memulai ekstraksi lokasi dan peristiwa.</p>
 
-      <form onSubmit={handleUpload} className="space-y-6">
+      <div className="space-y-6">
         {/* Hidden File Inputs */}
         <input 
           ref={cameraInputRef}
@@ -254,13 +253,14 @@ export default function UploadPage() {
         )}
 
         <button 
-          type="submit" 
+          type="button" 
+          onClick={handleUpload}
           disabled={files.length === 0 || loading}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl disabled:opacity-50 transition shadow-lg shadow-blue-200"
         >
           {loading ? 'Memproses dengan AI...' : 'Ekstrak Sekarang'}
         </button>
-      </form>
+      </div>
     </main>
   );
 }
