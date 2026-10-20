@@ -19,6 +19,19 @@ export default function ExtractReviewPage() {
           const result = await getExtraction(id);
           // If locations are null for some reason, ensure it's an array
           if (!result.locations) result.locations = [];
+          result.locations = result.locations.map((loc: any) => {
+            const excerpts = (loc.source_excerpts && loc.source_excerpts.length > 0)
+              ? loc.source_excerpts
+              : (loc.source_excerpt ? [loc.source_excerpt] : [""]);
+            return {
+              ...loc,
+              source_excerpts: excerpts,
+              source_excerpt: excerpts[0] || "",
+              related_events: loc.related_events || [],
+              related_figures: loc.related_figures || [],
+              suggested_activities: loc.suggested_activities || []
+            };
+          });
           setData(result);
         } catch (error) {
           console.error("Failed to fetch extraction", error);
@@ -36,8 +49,16 @@ export default function ExtractReviewPage() {
     if (!data) return;
     setSaving(true);
     try {
+      const sanitizedLocations = data.locations.map(loc => {
+        const cleanExcerpts = (loc.source_excerpts || []).filter(e => typeof e === 'string' && e.trim().length > 0);
+        return {
+          ...loc,
+          source_excerpts: cleanExcerpts,
+          source_excerpt: cleanExcerpts[0] || loc.source_excerpt || ""
+        };
+      });
       await updateExtraction(id, {
-        locations: data.locations,
+        locations: sanitizedLocations,
       });
       router.push(`/trip-config/${id}`);
     } catch (err) {
@@ -88,6 +109,7 @@ export default function ExtractReviewPage() {
       name: "",
       historical_context: "",
       source_excerpt: "",
+      source_excerpts: [""],
       related_events: [],
       related_figures: [],
       suggested_activities: []
@@ -144,14 +166,40 @@ export default function ExtractReviewPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Kutipan Sumber (Teks OCR)</label>
-                  <textarea
-                    rows={3}
-                    value={loc.source_excerpt}
-                    onChange={(e) => handleLocationChange(locIndex, 'source_excerpt', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-yellow-50 font-mono text-sm"
-                    placeholder="Kutipan langsung dari buku..."
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-semibold text-gray-700">Kutipan Sumber (Teks OCR)</label>
+                    <button 
+                      type="button" 
+                      onClick={() => addStringArrayItem(locIndex, 'source_excerpts')} 
+                      className="text-xs text-blue-600 hover:underline font-medium"
+                    >
+                      + Tambah Kutipan
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">Kutipan langsung dari buku sejarah sebagai bukti autentisitas.</p>
+                  <div className="space-y-2">
+                    {(loc.source_excerpts && loc.source_excerpts.length > 0 ? loc.source_excerpts : [""]).map((excerpt, exIdx) => (
+                      <div key={exIdx} className="flex gap-2 items-start">
+                        <textarea
+                          rows={2}
+                          value={excerpt}
+                          onChange={(e) => handleStringArrayChange(locIndex, 'source_excerpts', exIdx, e.target.value)}
+                          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-yellow-50 font-mono text-xs"
+                          placeholder="Kutipan langsung dari buku..."
+                        />
+                        {(loc.source_excerpts || []).length > 1 && (
+                          <button 
+                            type="button" 
+                            onClick={() => removeStringArrayItem(locIndex, 'source_excerpts', exIdx)} 
+                            className="text-red-500 hover:text-red-700 text-xs px-2 py-1 mt-1 font-bold"
+                            title="Hapus kutipan"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

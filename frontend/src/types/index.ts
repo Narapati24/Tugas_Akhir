@@ -1,7 +1,8 @@
 export interface LocationExtraction {
     name: string;
     historical_context: string;
-    source_excerpt: string;
+    source_excerpt?: string;
+    source_excerpts?: string[];
     related_events: string[];
     related_figures: string[];
     suggested_activities: string[];
@@ -30,7 +31,8 @@ export interface ScheduleItem {
     activity: string;
     location: string;
     historical_context: string;
-    source_excerpt: string;
+    source_excerpt?: string;
+    source_excerpts?: string[];
     related_events: string[];
     related_figures: string[];
     maps_link: string;

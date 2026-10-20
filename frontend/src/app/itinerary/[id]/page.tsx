@@ -92,12 +92,21 @@ export default function ItineraryPage() {
                   </div>
                 )}
                 
-                {item.source_excerpt && (
+                {((item.source_excerpts && item.source_excerpts.length > 0) || item.source_excerpt) && (
                   <div className="mb-3">
-                    <h4 className="font-semibold text-gray-700 text-xs uppercase tracking-wider mb-1">Kutipan Sumber</h4>
-                    <blockquote className="border-l-4 border-yellow-400 pl-3 italic text-gray-600 text-sm bg-yellow-50 py-1 pr-2 rounded-r-lg">
-                      "{item.source_excerpt}"
-                    </blockquote>
+                    <h4 className="font-semibold text-gray-700 text-xs uppercase tracking-wider mb-1">
+                      Kutipan Sumber {(item.source_excerpts && item.source_excerpts.length > 1) ? `(${item.source_excerpts.length})` : ''}
+                    </h4>
+                    <div className="space-y-2">
+                      {(item.source_excerpts && item.source_excerpts.length > 0
+                        ? item.source_excerpts
+                        : [item.source_excerpt]
+                      ).filter(Boolean).map((excerpt, exIdx) => (
+                        <blockquote key={exIdx} className="border-l-4 border-yellow-400 pl-3 italic text-gray-600 text-sm bg-yellow-50 py-1.5 pr-2 rounded-r-lg">
+                          "{excerpt}"
+                        </blockquote>
+                      ))}
+                    </div>
                   </div>
                 )}
 

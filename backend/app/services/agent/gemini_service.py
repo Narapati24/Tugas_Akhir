@@ -17,7 +17,14 @@ client = genai.Client(
 class LocationExtractionItem(BaseModel):
     name: str = Field(description="Nama objek fisik, gedung, museum, istana, monumen, atau landmark bersejarah spesifik yang dapat dikunjungi (bukan hanya nama kota). Contoh: 'Istana Kepresidenan Bogor, Bogor' atau 'Gedung Pancasila Kemlu, Jakarta'")
     historical_context: str = Field(description="Konteks sejarah dan signifikansi peristiwa di lokasi ini")
-    source_excerpt: str = Field(description="Kutipan langsung dan persis (verbatim) dari teks sumber tanpa diubah sedikitpun")
+    source_excerpts: list[str] = Field(
+        default_factory=list,
+        description="Daftar kutipan langsung dan persis (verbatim) dari teks sumber yang mendasari lokasi, peristiwa, atau perundingan ini (kumpulkan seluruh kutipan penting yang relevan jika dibahas di beberapa bagian teks). JANGAN diubah sedikitpun."
+    )
+    source_excerpt: Optional[str] = Field(
+        default="",
+        description="Kutipan utama dari teks sumber (opsional / untuk kompatibilitas data lama)"
+    )
     related_events: list[str] = Field(description="Peristiwa sejarah terkait")
     related_figures: list[str] = Field(description="Tokoh sejarah yang terlibat")
     suggested_activities: list[str] = Field(description="Saran aktivitas napak tilas atau edukasi di lokasi ini")
@@ -50,7 +57,14 @@ class ScheduleItem(BaseModel):
     activity: str
     location: str = Field(description="Nama bangunan fisik, museum, istana, atau landmark spesifik yang dikunjungi (bukan hanya nama kota umum)")
     historical_context: str
-    source_excerpt: str = Field(description="Kutipan langsung dari sumber sejarah")
+    source_excerpts: list[str] = Field(
+        default_factory=list,
+        description="Daftar kutipan sumber sejarah yang relevan dengan aktivitas pada jam ini (bisa 1 atau beberapa kutipan)"
+    )
+    source_excerpt: Optional[str] = Field(
+        default="",
+        description="Kutipan utama dari sumber sejarah (opsional / kompatibilitas data lama)"
+    )
     related_events: list[str]
     related_figures: list[str]
     maps_link: str = Field(description="Tautan pencarian Google Maps untuk objek/landmark spesifik tersebut")
@@ -122,9 +136,10 @@ def extract_historical_info(text: str) -> dict:
          * Format penamaan lokasi: "[Nama Landmark/Gedung Spesifik], [Kota/Kabupaten]".
     2. Peristiwa Bersejarah di Luar Negeri / Diplomasi Internasional:
        - Jika teks menceritakan peristiwa internasional atau konferensi di luar negeri, karena perjalanan napak tilas pengguna dibatasi di dalam negeri Indonesia, identifikasi situs/institusi domestik terkait yang merepresentasikan sejarah tersebut (misalnya: Museum Konferensi Asia Afrika Bandung, Gedung Arsip Nasional RI (ANRI) Jakarta, atau Perpustakaan/Museum Kementerian Luar Negeri RI).
-    3. Keaslian Kutipan Sumber (source_excerpt) - MUTLAK & VERBATIM:
-       - Kolom 'source_excerpt' HARUS 100% disalin persis sesuai teks asli (verbatim) yang tertulis di teks sumber.
-       - JANGAN PERNAH merekayasa atau mengubah kutipan teks asli meskipun di teks hanya tertulis nama kotanya.
+    3. Multi-Kutipan Sumber ('source_excerpts': list[str]) - MUTLAK & VERBATIM:
+       - Berikan DAFTAR KUTIPAN LANGSUNG ('source_excerpts') dari teks asli yang mendasari lokasi atau peristiwa tersebut.
+       - Jika suatu lokasi atau peristiwa dibahas di beberapa kalimat atau halaman berbeda, kumpulkan seluruh kutipan penting yang relevan (misalnya kutipan tanggal/waktu, kutipan nama tokoh, kutipan hasil kesepakatan).
+       - Setiap kutipan HARUS 100% disalin persis sesuai teks asli (verbatim) yang tertulis di teks sumber. JANGAN merekayasa teks kutipan.
 
     SELURUH HASIL HARUS DALAM BAHASA INDONESIA YANG BAIK DAN BENAR.
 
@@ -141,18 +156,35 @@ def extract_historical_info(text: str) -> dict:
         ),
     )
     
+    res_dict = None
     if hasattr(response, 'parsed') and response.parsed:
-        return response.parsed.model_dump()
+        res_dict = response.parsed.model_dump()
+    else:
+        import json
+        raw_text = (response.text or "{}").strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+        if raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+        res_dict = json.loads(raw_text.strip())
 
-    import json
-    raw_text = (response.text or "{}").strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-    if raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    return json.loads(raw_text.strip())
+    for loc in res_dict.get("locations", []):
+        excerpts = [e.strip() for e in (loc.get("source_excerpts") or []) if isinstance(e, str) and e.strip()]
+        single = (loc.get("source_excerpt") or "").strip()
+        if excerpts and not single:
+            loc["source_excerpt"] = excerpts[0]
+        elif single and not excerpts:
+            loc["source_excerpts"] = [single]
+        elif excerpts and single:
+            loc["source_excerpts"] = excerpts
+            loc["source_excerpt"] = single
+        elif not excerpts and not single:
+            loc["source_excerpts"] = []
+            loc["source_excerpt"] = ""
+
+    return res_dict
 
 def validate_and_enrich_cost_estimation(itinerary_data: dict, trip_config: dict) -> dict:
     """
@@ -337,7 +369,7 @@ def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
     - Seluruh aktivitas harus selesai SEBELUM atau tepat pukul: {trip_config.get("end_time")}
     - Alokasikan waktu perjalanan dan istirahat yang realistis antar lokasi.
     - Untuk setiap item jadwal, tentukan perkiraan durasi kegiatan/perjalanan dalam menit ('duration_minutes').
-    - Untuk setiap item jadwal, sertakan 'historical_context', 'source_excerpt', 'related_events', dan 'related_figures' yang diambil dari Data Sejarah.
+    - Untuk setiap item jadwal, sertakan 'historical_context', 'source_excerpts' (daftar kutipan relevan dari Data Sejarah), 'related_events', dan 'related_figures' yang diambil dari Data Sejarah.
 
     ATURAN LOKASI DAN NAVIGASI (SANGAT PENTING):
     - Seluruh perhentian kegiatan napak tilas pada jadwal ('location') dan daftar 'locations' HARUS berupa nama bangunan/situs/museum/landmark fisik bersejarah spesifik yang dapat dikunjungi (misal: "Istana Kepresidenan Bogor, Bogor" atau "Jakarta Convention Center / Gedung Arsip Nasional, Jakarta", BUKAN sekadar nama kota umum seperti "Jakarta" atau "Bogor").
@@ -376,17 +408,32 @@ def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
         ),
     )
 
+    result = None
     if hasattr(response, 'parsed') and response.parsed:
         result = response.parsed.model_dump()
-        return validate_and_enrich_cost_estimation(result, trip_config)
+    else:
+        import json
+        raw_text = (response.text or "{}").strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+        if raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+        result = json.loads(raw_text.strip())
 
-    import json
-    raw_text = (response.text or "{}").strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-    if raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    parsed_json = json.loads(raw_text.strip())
-    return validate_and_enrich_cost_estimation(parsed_json, trip_config)
+    for item in result.get("schedule", []):
+        excerpts = [e.strip() for e in (item.get("source_excerpts") or []) if isinstance(e, str) and e.strip()]
+        single = (item.get("source_excerpt") or "").strip()
+        if excerpts and not single:
+            item["source_excerpt"] = excerpts[0]
+        elif single and not excerpts:
+            item["source_excerpts"] = [single]
+        elif excerpts and single:
+            item["source_excerpts"] = excerpts
+            item["source_excerpt"] = single
+        elif not excerpts and not single:
+            item["source_excerpts"] = []
+            item["source_excerpt"] = ""
+
+    return validate_and_enrich_cost_estimation(result, trip_config)

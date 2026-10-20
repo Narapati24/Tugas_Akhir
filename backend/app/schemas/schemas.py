@@ -1,14 +1,29 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import List, Optional, Dict, Any
 
 # Historical Extraction Schemas
 class LocationExtractionItem(BaseModel):
     name: str
     historical_context: str
-    source_excerpt: str
-    related_events: List[str]
-    related_figures: List[str]
-    suggested_activities: List[str]
+    source_excerpt: Optional[str] = ""
+    source_excerpts: List[str] = []
+    related_events: List[str] = []
+    related_figures: List[str] = []
+    suggested_activities: List[str] = []
+
+    @model_validator(mode='before')
+    @classmethod
+    def sync_excerpts(cls, data: Any):
+        if isinstance(data, dict):
+            excerpts = [e.strip() for e in (data.get("source_excerpts") or []) if e and isinstance(e, str) and e.strip()]
+            single = data.get("source_excerpt") or ""
+            if isinstance(single, str):
+                single = single.strip()
+            if excerpts and not single:
+                data["source_excerpt"] = excerpts[0]
+            elif single and not excerpts:
+                data["source_excerpts"] = [single]
+        return data
 
 class HistoricalExtractionBase(BaseModel):
     source_title: Optional[str] = None
