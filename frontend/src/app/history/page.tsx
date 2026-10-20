@@ -61,13 +61,18 @@ export default function HistoryPage() {
                   {item.itinerary_result?.summary || 'Tidak ada deskripsi'}
                 </p>
                 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <span className="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
                     📍 {item.itinerary_result?.locations?.length || 0} Lokasi
                   </span>
                   <span className="text-xs bg-white border border-gray-200 px-2 py-1 rounded text-gray-600">
                     🚶‍♂️ {item.itinerary_result?.activities?.length || 0} Aktivitas
                   </span>
+                  {item.estimated_cost && (
+                    <span className="text-xs bg-emerald-50 border border-emerald-200 px-2 py-1 rounded text-emerald-700 font-medium line-clamp-1">
+                      💰 {item.itinerary_result?.cost_estimation?.total_estimated_cost ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(item.itinerary_result.cost_estimation.total_estimated_cost) : item.estimated_cost}
+                    </span>
+                  )}
                 </div>
               </div>
             </Link>

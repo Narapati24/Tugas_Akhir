@@ -46,6 +46,29 @@ class TripConfigurationResponse(TripConfigurationBase):
     class Config:
         from_attributes = True
 
+# Cost Estimation Schemas
+class CostBreakdownItemSchema(BaseModel):
+    category: str
+    name: str
+    unit_price: Optional[float] = None
+    estimated_amount: float
+    unit_scope: str
+    status: str
+    subtotal: Optional[float] = None
+    note: str
+
+class CostEstimationSchema(BaseModel):
+    items: List[CostBreakdownItemSchema]
+    total_estimated_cost: float
+    cost_per_participant: Optional[float] = None
+    currency: str = "IDR"
+    participant_count: Optional[int] = None
+    user_budget: Optional[float] = None
+    budget_difference: Optional[float] = None
+    budget_status: Optional[str] = None
+    has_unknown_costs: bool = False
+    summary_notes: str
+
 # Itinerary Schemas
 class ItineraryCreateRequest(BaseModel):
     extraction_id: int
@@ -58,6 +81,7 @@ class ItineraryResponse(BaseModel):
     itinerary_result: Dict[str, Any]
     estimated_duration: Optional[str] = None
     estimated_cost: Optional[str] = None
+    configuration: Optional[TripConfigurationResponse] = None
 
     class Config:
         from_attributes = True
