@@ -36,6 +36,30 @@ export interface ScheduleItem {
     maps_link: string;
 }
 
+export interface CostBreakdownItem {
+    category: string;
+    name: string;
+    unit_price?: number;
+    estimated_amount: number;
+    unit_scope: 'per_peserta' | 'total_kelompok' | string;
+    status: 'tersedia' | 'estimasi' | 'belum_tersedia' | 'gratis' | string;
+    subtotal?: number;
+    note: string;
+}
+
+export interface CostEstimation {
+    items: CostBreakdownItem[];
+    total_estimated_cost: number;
+    cost_per_participant?: number;
+    currency: string;
+    participant_count?: number;
+    user_budget?: number | null;
+    budget_difference?: number | null;
+    budget_status?: 'dalam_anggaran' | 'melebihi_anggaran' | 'belum_lengkap' | 'tanpa_anggaran' | string;
+    has_unknown_costs: boolean;
+    summary_notes: string;
+}
+
 export interface ItineraryResult {
     summary: string;
     locations: string[];
@@ -43,6 +67,7 @@ export interface ItineraryResult {
     schedule: ScheduleItem[];
     estimated_duration: string;
     estimated_cost: string;
+    cost_estimation?: CostEstimation;
 }
 
 export interface Itinerary {
@@ -52,4 +77,5 @@ export interface Itinerary {
     itinerary_result: ItineraryResult;
     estimated_duration: string | null;
     estimated_cost: string | null;
+    configuration?: TripConfiguration;
 }
