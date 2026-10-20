@@ -25,8 +25,8 @@ def extract_text_from_image(image_bytes: bytes) -> str:
         # Convert to grayscale for much faster and cleaner OCR
         image = image.convert('L')
         
-        # Limit maximum dimension to 1400px to prevent high-res CPU choking
-        max_dim = 1400
+        # Limit maximum dimension to 1000px to prevent high-res CPU choking on VPS
+        max_dim = 1000
         if max(image.size) > max_dim:
             image.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
         

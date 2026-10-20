@@ -11,7 +11,7 @@ if not settings.GEMINI_API_KEY:
 
 client = genai.Client(
     api_key=settings.GEMINI_API_KEY,
-    http_options=types.HttpOptions(timeout=30000)
+    http_options=types.HttpOptions(timeout=20000)
 ) if settings.GEMINI_API_KEY else None
 
 class LocationExtractionItem(BaseModel):
