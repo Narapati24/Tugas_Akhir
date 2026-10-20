@@ -15,12 +15,12 @@ client = genai.Client(
 ) if settings.GEMINI_API_KEY else None
 
 class LocationExtractionItem(BaseModel):
-    name: str
-    historical_context: str
-    source_excerpt: str
-    related_events: list[str]
-    related_figures: list[str]
-    suggested_activities: list[str]
+    name: str = Field(description="Nama objek fisik, gedung, museum, istana, monumen, atau landmark bersejarah spesifik yang dapat dikunjungi (bukan hanya nama kota). Contoh: 'Istana Kepresidenan Bogor, Bogor' atau 'Gedung Pancasila Kemlu, Jakarta'")
+    historical_context: str = Field(description="Konteks sejarah dan signifikansi peristiwa di lokasi ini")
+    source_excerpt: str = Field(description="Kutipan langsung dan persis (verbatim) dari teks sumber tanpa diubah sedikitpun")
+    related_events: list[str] = Field(description="Peristiwa sejarah terkait")
+    related_figures: list[str] = Field(description="Tokoh sejarah yang terlibat")
+    suggested_activities: list[str] = Field(description="Saran aktivitas napak tilas atau edukasi di lokasi ini")
 
 class ExtractionFormat(BaseModel):
     locations: list[LocationExtractionItem]
@@ -48,16 +48,16 @@ class ScheduleItem(BaseModel):
     time: str
     duration_minutes: int
     activity: str
-    location: str
+    location: str = Field(description="Nama bangunan fisik, museum, istana, atau landmark spesifik yang dikunjungi (bukan hanya nama kota umum)")
     historical_context: str
-    source_excerpt: str
+    source_excerpt: str = Field(description="Kutipan langsung dari sumber sejarah")
     related_events: list[str]
     related_figures: list[str]
-    maps_link: str
+    maps_link: str = Field(description="Tautan pencarian Google Maps untuk objek/landmark spesifik tersebut")
 
 class ItineraryFormat(BaseModel):
     summary: str
-    locations: list[str]
+    locations: list[str] = Field(description="Daftar nama landmark fisik spesifik yang dikunjungi sepanjang perjalanan")
     activities: list[str]
     schedule: list[ScheduleItem]
     estimated_duration: str
@@ -111,11 +111,24 @@ def extract_historical_info(text: str) -> dict:
         raise ValueError("Gemini Client not initialized. Check GEMINI_API_KEY.")
 
     prompt = f"""
-    Anda adalah HistoricalExtractionAgent. Ekstrak entitas sejarah dari teks berikut menjadi format terstruktur yang kaya.
-    Untuk setiap lokasi yang teridentifikasi, berikan nama lokasi, konteks sejarahnya, KUTIPAN LANGSUNG (source_excerpt) dari teks yang mendasari lokasi tersebut, tokoh yang terlibat, peristiwa yang terjadi, dan saran aktivitas napak tilas.
-    SELURUH HASIL HARUS DALAM BAHASA INDONESIA. Kutipan (source_excerpt) harus disalin persis sesuai teks asli.
-    
-    Teks:
+    Anda adalah HistoricalExtractionAgent, kurator rute napak tilas dan ahli analisis sejarah.
+    Tugas Anda adalah mengekstrak entitas dan peristiwa sejarah dari teks dokumen/buku sejarah berikut menjadi format terstruktur yang kaya dan siap dijadikan destinasi napak tilas nyata.
+
+    ATURAN ENTITAS LOKASI (SANGAT PENTING - LANDMARK GROUNDING):
+    1. Landmark/Bangunan Fisik Spesifik yang Dapat Dikunjungi:
+       - Tujuan utama napak tilas adalah mendatangi titik fisik nyata. HINDARI mengekstrak lokasi yang HANYA berupa nama kota, kabupaten, atau kawasan makro (seperti "Jakarta", "Bogor", "Bandung", dsb.).
+       - Jika teks sumber HANYA menyebutkan nama kota/daerah terkait suatu peristiwa sejarah (misalnya: "KTM APEC diadakan di Jakarta", "pertemuan AELM di Bogor", "perundingan diadakan di Linggarjati"):
+         * Lakukan penelusuran sejarah (grounding/disambiguasi) untuk mengidentifikasi nama gedung, istana, kompleks konferensi, monumen, atau museum spesifik di kota tersebut tempat peristiwa itu berlangsung (contoh: "Istana Kepresidenan Bogor, Bogor" untuk KTT AELM & Deklarasi Bogor 1994; "Jakarta Convention Center (JCC) Senayan, Jakarta" atau "Gedung Pancasila Kemlu, Jakarta" untuk KTM APEC 1994; "Gedung Perundingan Linggarjati, Kuningan").
+         * Format penamaan lokasi: "[Nama Landmark/Gedung Spesifik], [Kota/Kabupaten]".
+    2. Peristiwa Bersejarah di Luar Negeri / Diplomasi Internasional:
+       - Jika teks menceritakan peristiwa internasional atau konferensi di luar negeri, karena perjalanan napak tilas pengguna dibatasi di dalam negeri Indonesia, identifikasi situs/institusi domestik terkait yang merepresentasikan sejarah tersebut (misalnya: Museum Konferensi Asia Afrika Bandung, Gedung Arsip Nasional RI (ANRI) Jakarta, atau Perpustakaan/Museum Kementerian Luar Negeri RI).
+    3. Keaslian Kutipan Sumber (source_excerpt) - MUTLAK & VERBATIM:
+       - Kolom 'source_excerpt' HARUS 100% disalin persis sesuai teks asli (verbatim) yang tertulis di teks sumber.
+       - JANGAN PERNAH merekayasa atau mengubah kutipan teks asli meskipun di teks hanya tertulis nama kotanya.
+
+    SELURUH HASIL HARUS DALAM BAHASA INDONESIA YANG BAIK DAN BENAR.
+
+    Teks Sumber:
     {text}
     """
 
@@ -325,7 +338,11 @@ def generate_itinerary(extraction_data: dict, trip_config: dict) -> dict:
     - Alokasikan waktu perjalanan dan istirahat yang realistis antar lokasi.
     - Untuk setiap item jadwal, tentukan perkiraan durasi kegiatan/perjalanan dalam menit ('duration_minutes').
     - Untuk setiap item jadwal, sertakan 'historical_context', 'source_excerpt', 'related_events', dan 'related_figures' yang diambil dari Data Sejarah.
-    - Sediakan 'maps_link' pencarian Google Maps untuk lokasi tersebut (format: https://www.google.com/maps/search/?api=1&query=Nama+Lokasi). JANGAN pernah mengklaim tautan Google Maps ini sebagai bukti jarak tempuh aktual, navigasi turn-by-turn, atau optimasi rute lalu lintas real-time.
+
+    ATURAN LOKASI DAN NAVIGASI (SANGAT PENTING):
+    - Seluruh perhentian kegiatan napak tilas pada jadwal ('location') dan daftar 'locations' HARUS berupa nama bangunan/situs/museum/landmark fisik bersejarah spesifik yang dapat dikunjungi (misal: "Istana Kepresidenan Bogor, Bogor" atau "Jakarta Convention Center / Gedung Arsip Nasional, Jakarta", BUKAN sekadar nama kota umum seperti "Jakarta" atau "Bogor").
+    - Jika data sejarah hanya menyebutkan nama kota, pilih landmark/bangunan bersejarah spesifik yang paling relevan dengan peristiwa tersebut.
+    - Sediakan 'maps_link' pencarian Google Maps yang mengarah langsung ke nama objek/landmark spesifik tersebut (format: https://www.google.com/maps/search/?api=1&query=Nama+Objek+Spesifik+Kota) agar pengguna mendapatkan titik navigasi yang tepat sasaran. JANGAN pernah mengklaim tautan Google Maps ini sebagai bukti jarak tempuh aktual, navigasi turn-by-turn, atau optimasi rute lalu lintas real-time.
 
     ATURAN ESTIMASI BIAYA PERJALANAN (SANGAT PENTING):
     1. Rincian Komponen:
