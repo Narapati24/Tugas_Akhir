@@ -10,7 +10,7 @@ async function optimizeImage(file: File): Promise<File> {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX_DIM = 1200;
+      const MAX_DIM = 1000;
       let { width, height } = img;
 
       if (width > MAX_DIM || height > MAX_DIM) {
@@ -21,10 +21,6 @@ async function optimizeImage(file: File): Promise<File> {
           width = Math.round((width * MAX_DIM) / height);
           height = MAX_DIM;
         }
-      } else if (file.size < 500 * 1024 && file.type === 'image/jpeg') {
-        // Already compact JPEG and below dimensions
-        resolve(file);
-        return;
       }
 
       const canvas = document.createElement('canvas');

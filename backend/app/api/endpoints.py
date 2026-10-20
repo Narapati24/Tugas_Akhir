@@ -16,22 +16,31 @@ async def upload_and_extract(files: list[UploadFile] = File(...), db: Session = 
     
     import time
     start_time = time.time()
+    
+    file_data = []
     for file in files:
         contents = await file.read()
+        file_data.append((file.filename or "halaman", contents, file.content_type or "image/jpeg"))
+
+    def process_single_image(item):
+        filename, contents, content_type = item
         f_start = time.time()
-        # Primary OCR: Tesseract
         raw_text = extract_text_from_image(contents)
-        print(f"[{file.filename}] Tesseract OCR took {time.time() - f_start:.2f}s, found {len(raw_text)} chars")
-        
-        # Fallback OCR: Gemini Vision (if Tesseract detects nothing due to camera angle/lighting)
+        print(f"[{filename}] Tesseract OCR took {time.time() - f_start:.2f}s, found {len(raw_text)} chars")
         if not raw_text.strip():
-            print(f"[{file.filename}] Tesseract found no text, invoking Gemini Vision OCR...")
-            raw_text = ocr_with_gemini_vision(contents, file.content_type or "image/jpeg")
-            print(f"[{file.filename}] Gemini Vision OCR finished in {time.time() - f_start:.2f}s")
-            
-        if raw_text.strip():
-            all_raw_texts.append(raw_text.strip())
-            filenames.append(file.filename or "halaman")
+            print(f"[{filename}] Tesseract found no text, invoking Gemini Vision OCR...")
+            raw_text = ocr_with_gemini_vision(contents, content_type)
+            print(f"[{filename}] Gemini Vision OCR finished in {time.time() - f_start:.2f}s")
+        return filename, raw_text.strip()
+
+    from concurrent.futures import ThreadPoolExecutor
+    max_workers = min(len(file_data), 4)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(process_single_image, file_data))
+
+    all_raw_texts = [r[1] for r in results if r[1]]
+    filenames = [r[0] for r in results if r[1]]
+    print(f"Parallel OCR completed for {len(files)} files in {time.time() - start_time:.2f}s")
             
     combined_raw_text = "\n\n--- NEXT PAGE ---\n\n".join(all_raw_texts)
     
