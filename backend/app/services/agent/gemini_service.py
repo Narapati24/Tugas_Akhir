@@ -64,7 +64,7 @@ class ItineraryFormat(BaseModel):
     estimated_cost: str
     cost_estimation: Optional[CostEstimation] = None
 
-FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite']
+FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
 
 def call_gemini_with_fallback(**kwargs):
     last_err: Exception = RuntimeError("Semua model Gemini gagal merespons.")
